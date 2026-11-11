@@ -2,63 +2,415 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1">
-  <title>Tradingtagebuch</title>
-  <style>
-    body {
-      margin: 0;
-      background: #0b1120;
-      color: #f8fafc;
-      font-family: Arial, sans-serif;
-    }
-    header {
-      padding: 24px;
-      background: #111827;
-      border-bottom: 1px solid #334155;
-    }
-    h1 { margin: 0; }
-    main { padding: 20px; }
-    .card {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 14px;
-      margin-bottom: 15px;
-    }
-    .value {
-      font-size: 28px;
-      font-weight: bold;
-      color: #22c55e;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tradingtagebuch</title>
+<style>
+:root{
+ --bg:#0b1120;--panel:#172235;--border:#304057;
+ --text:#f1f5f9;--muted:#94a3b8;
+ --green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+ font-family:Arial,sans-serif}
+header{padding:20px;background:#111827;
+ border-bottom:1px solid var(--border)}
+h1{margin:0;font-size:24px}
+small,.muted{color:var(--muted)}
+nav{display:flex;overflow-x:auto;gap:8px;
+ padding:12px;background:#111827}
+button{cursor:pointer;border:0;border-radius:9px;
+ padding:12px;color:white;background:#334155}
+nav button{white-space:nowrap}
+button.active,.primary{background:#2563eb}
+main{padding:15px;max-width:1100px;margin:auto}
+section{display:none}
+section.active{display:block}
+.card{background:var(--panel);border:1px solid var(--border);
+ border-radius:14px;padding:17px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stats .card{margin:0}
+.value{font-size:23px;font-weight:bold;margin-top:10px}
+.green{color:var(--green)}.red{color:var(--red)}
+label{display:block;margin:13px 0 5px;color:var(--muted)}
+input,select,textarea{width:100%;padding:12px;
+ background:#0f172a;border:1px solid var(--border);
+ border-radius:8px;color:white;font-size:16px}
+textarea{min-height:95px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.full{grid-column:1/-1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.trade{border-bottom:1px solid var(--border);padding:14px 0}
+.trade:last-child{border:0}
+.tradehead{display:flex;justify-content:space-between;gap:8px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{background:#243247;border-radius:7px;min-height:65px;
+ padding:6px;font-size:12px;overflow-wrap:anywhere}
+.day.positive{background:#14532d}
+.day.negative{background:#7f1d1d}
+.day.empty{background:transparent}
+.day strong{display:block;margin-top:8px}
+.weekday{text-align:center;color:var(--muted);font-size:12px}
+#equity{width:100%;height:220px}
+@media(max-width:500px){
+ .formgrid{grid-template-columns:1fr}
+ .day{min-height:52px;padding:4px;font-size:10px}
+}
+</style>
 </head>
 <body>
-  <header>
-    <h1>Tradingtagebuch</h1>
-    <p>Mein persönliches Trading Journal</p>
-  </header>
+<header>
+<h1>Tradingtagebuch</h1>
+<small>Mein persönliches Trading Journal</small>
+</header>
+<nav>
+<button class="active" data-tab="dashboard">Dashboard</button>
+<button data-tab="trades">Trades</button>
+<button data-tab="newtrade">+ Trade</button>
+<button data-tab="calendar">Kalender</button>
+<button data-tab="analysis">Analyse</button>
+</nav>
+<main>
+<section id="dashboard" class="active">
+<h2>Dashboard</h2>
+<div class="stats">
+<div class="card">Nettoergebnis<div id="total" class="value">0 €</div></div>
+<div class="card">Trades<div id="count" class="value">0</div></div>
+<div class="card">Trefferquote<div id="winrate" class="value">–</div></div>
+<div class="card">Profit Factor<div id="pf" class="value">–</div></div>
+</div>
+<div class="card">
+<h3>Equity-Kurve (kumuliertes Ergebnis)</h3>
+<canvas id="equity"></canvas>
+</div>
+<div class="card">
+<h3>Letzte Trades</h3>
+<div id="recent"></div>
+</div>
+</section>
 
-  <main>
-    <div class="card">
-      <h3>Gesamtergebnis</h3>
-      <div class="value">0,00 €</div>
-    </div>
+<section id="trades">
+<h2>Trade-Historie</h2>
+<div class="card">
+<label>Strategie filtern</label>
+<select id="filter">
+<option value="">Alle Strategien</option>
+</select>
+</div>
+<div class="card" id="tradeList"></div>
+</section>
 
-    <div class="card">
-      <h3>Anzahl Trades</h3>
-      <div class="value">0</div>
-    </div>
+<section id="newtrade">
+<h2 id="formTitle">Neuen Trade erfassen</h2>
+<form id="tradeForm" class="card">
+<input type="hidden" id="editId">
+<div class="formgrid">
+<div>
+<label>Datum und Uhrzeit</label>
+<input id="date" type="datetime-local" required>
+</div>
+<div>
+<label>Markt / Symbol</label>
+<input id="symbol" placeholder="EURUSD, GER40 ..." required>
+</div>
+<div>
+<label>Richtung</label>
+<select id="direction">
+<option>Long</option><option>Short</option>
+</select>
+</div>
+<div>
+<label>Strategie / Setup</label>
+<input id="strategy" list="strategies" required>
+<datalist id="strategies">
+<option value="H4 Umkehrstab">
+<option value="H4/H1 HA Zonen">
+<option value="H1/M1 HA Zonen">
+<option value="M15 HA Zonen">
+<option value="DAX Opening Range">
+<option value="Sonstige">
+</datalist>
+</div>
+<div>
+<label>Einstiegskurs</label>
+<input id="entry" type="number" step="any" required>
+</div>
+<div>
+<label>Ausstiegskurs</label>
+<input id="exit" type="number" step="any" required>
+</div>
+<div>
+<label>Stop-Loss</label>
+<input id="sl" type="number" step="any">
+</div>
+<div>
+<label>Take-Profit</label>
+<input id="tp" type="number" step="any">
+</div>
+<div>
+<label>Risiko (€)</label>
+<input id="risk" type="number" min="0" step="0.01" required>
+</div>
+<div>
+<label>Nettoergebnis (€)</label>
+<input id="pnl" type="number" step="0.01" required>
+</div>
+<div class="full">
+<label>Notizen</label>
+<textarea id="notes" placeholder="Warum eingestiegen? Fehler? Erkenntnisse?"></textarea>
+</div>
+</div>
+<div class="actions">
+<button class="primary" type="submit">Trade speichern</button>
+<button type="button" id="cancelEdit">Abbrechen</button>
+</div>
+</form>
+</section>
 
-    <div class="card">
-      <h3>Trefferquote</h3>
-      <div class="value">0 %</div>
-    </div>
+<section id="calendar">
+<h2>Tradingkalender</h2>
+<div class="card">
+<div class="actions">
+<button id="prevMonth">←</button>
+<h3 id="monthTitle"></h3>
+<button id="nextMonth">→</button>
+</div>
+<div class="calendar" id="calendarGrid"></div>
+</div>
+</section>
 
-    <div class="card">
-      <h3>Profit Factor</h3>
-      <div class="value">–</div>
-    </div>
-  </main>
+<section id="analysis">
+<h2>Performanceanalyse</h2>
+<div class="stats">
+<div class="card">Gewinntrades<div class="value" id="wins">0</div></div>
+<div class="card">Verlusttrades<div class="value" id="losses">0</div></div>
+<div class="card">Ø Gewinn<div class="value" id="avgWin">–</div></div>
+<div class="card">Ø Verlust<div class="value" id="avgLoss">–</div></div>
+<div class="card">Erwartungswert<div class="value" id="expectancy">–</div></div>
+<div class="card">Max. Drawdown<div class="value" id="drawdown">–</div></div>
+</div>
+<div class="card">
+<h3>Strategieauswertung</h3>
+<div id="strategyStats"></div>
+</div>
+</section>
+</main>
+
+<script>
+"use strict";
+const KEY="tradingtagebuch_v1";
+let trades=[];
+try{
+ const saved=JSON.parse(localStorage.getItem(KEY)||"[]");
+ if(Array.isArray(saved))trades=saved;
+}catch(e){alert("Lokale Daten konnten nicht gelesen werden.");}
+
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat("de-DE",{
+ style:"currency",currency:"EUR"
+}).format(n);
+const pct=n=>n.toFixed(1).replace(".",",")+" %";
+const number=id=>$(id).value===""?null:Number($(id).value);
+const sorted=()=>[...trades].sort((a,b)=>
+ a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+function save(){
+ try{localStorage.setItem(KEY,JSON.stringify(trades));return true}
+ catch(e){alert("Speichern fehlgeschlagen. Browser-Speicher prüfen.");return false}
+}
+function show(tab){
+ document.querySelectorAll("section").forEach(s=>
+ s.classList.toggle("active",s.id===tab));
+ document.querySelectorAll("nav button").forEach(b=>
+ b.classList.toggle("active",b.dataset.tab===tab));
+ if(tab==="dashboard")drawEquity();
+ window.scrollTo(0,0);
+}
+document.querySelectorAll("nav button").forEach(b=>
+ b.addEventListener("click",()=>show(b.dataset.tab)));
+function el(tag,text,parent,cls){
+ const node=document.createElement(tag);
+ if(text!==undefined)node.textContent=String(text);
+ if(cls)node.className=cls;
+ if(parent)parent.appendChild(node);
+ return node;
+}
+function clear(id){$(id).replaceChildren()}
+function summary(items){
+ const w=items.filter(t=>t.pnl>0);
+ const l=items.filter(t=>t.pnl<0);
+ const sum=items.reduce((a,t)=>a+t.pnl,0);
+ const grossWin=w.reduce((a,t)=>a+t.pnl,0);
+ const grossLoss=-l.reduce((a,t)=>a+t.pnl,0);
+ return {w,l,sum,grossWin,grossLoss,
+ rate:items.length?w.length/items.length*100:0,
+ pf:grossLoss?grossWin/grossLoss:(grossWin?"∞":"–")};
+}
+function refresh(){
+ const s=summary(trades);
+ $("total").textContent=money(s.sum);
+ $("total").className="value "+(s.sum<0?"red":"green");
+ $("count").textContent=trades.length;
+ $("winrate").textContent=trades.length?pct(s.rate):"–";
+ $("pf").textContent=typeof s.pf==="number"?s.pf.toFixed(2):s.pf;
+ $("wins").textContent=s.w.length;
+ $("losses").textContent=s.l.length;
+ $("avgWin").textContent=s.w.length?money(s.grossWin/s.w.length):"–";
+ $("avgLoss").textContent=s.l.length?money(-s.grossLoss/s.l.length):"–";
+ $("expectancy").textContent=trades.length?money(s.sum/trades.length):"–";
+ let balance=0,peak=0,maxDD=0;
+ sorted().forEach(t=>{
+ balance+=t.pnl;peak=Math.max(peak,balance);
+ maxDD=Math.max(maxDD,peak-balance);
+ });
+ $("drawdown").textContent=money(maxDD);
+ renderTrades();renderCalendar();renderStrategies();
+ drawEquity();
+}
+function renderTrade(t,parent){
+ const div=el("div",undefined,parent,"trade");
+ const head=el("div",undefined,div,"tradehead");
+ el("strong",t.symbol+" · "+t.direction,head);
+ el("strong",money(t.pnl),head,t.pnl<0?"red":"green");
+ el("small",t.date.replace("T"," ")+" · "+t.strategy,div);
+ el("div","Einstieg: "+t.entry+" | Ausstieg: "+t.exit,div);
+ el("div","SL: "+(t.sl??"–")+" | TP: "+(t.tp??"–"),div);
+ el("div","Risiko: "+money(t.risk),div);
+ if(t.notes)el("p",t.notes,div);
+ const actions=el("div",undefined,div,"actions");
+ const edit=el("button","Bearbeiten",actions);
+ edit.onclick=()=>editTrade(t.id);
+ const del=el("button","Löschen",actions);
+ del.onclick=()=>{
+ if(confirm("Diesen Trade wirklich löschen?")){
+ const old=trades;
+ trades=trades.filter(x=>x.id!==t.id);
+ if(!save())trades=old;
+ refresh();
+ }
+ };
+}
+function renderTrades(){
+ clear("recent");clear("tradeList");
+ const items=sorted().reverse();
+ items.slice(0,3).forEach(t=>renderTrade(t,$("recent")));
+ if(!items.length)el("p","Noch keine Trades vorhanden.",$("recent"));
+ const strategies=[...new Set(trades.map(t=>t.strategy))].sort();
+ const selected=$("filter").value;
+ $("filter").replaceChildren();
+ const all=el("option","Alle Strategien",$("filter"));
+ all.value="";
+ strategies.forEach(s=>{const o=el("option",s,$("filter"));o.value=s});
+ $("filter").value=strategies.includes(selected)?selected:"";
+ const filtered=items.filter(t=>!$("filter").value||
+ t.strategy===$("filter").value);
+ filtered.forEach(t=>renderTrade(t,$("tradeList")));
+ if(!filtered.length)el("p","Keine Trades gefunden.",$("tradeList"));
+}
+$("filter").onchange=renderTrades;
+function editTrade(id){
+ const t=trades.find(x=>x.id===id);if(!t)return;
+ ["date","symbol","direction","strategy","entry","exit",
+ "sl","tp","risk","pnl","notes"].forEach(k=>$(k).value=t[k]??"");
+ $("editId").value=id;
+ $("formTitle").textContent="Trade bearbeiten";
+ show("newtrade");
+}
+function resetForm(){
+ $("tradeForm").reset();$("editId").value="";
+ $("formTitle").textContent="Neuen Trade erfassen";
+}
+$("cancelEdit").onclick=()=>{resetForm();show("trades")};
+$("tradeForm").onsubmit=e=>{
+ e.preventDefault();
+ const id=$("editId").value;
+ const t={
+ id:id||crypto.randomUUID(),
+ date:$("date").value,
+ symbol:$("symbol").value.trim().toUpperCase(),
+ direction:$("direction").value,
+ strategy:$("strategy").value.trim(),
+ entry:number("entry"),exit:number("exit"),
+ sl:number("sl"),tp:number("tp"),
+ risk:number("risk"),pnl:number("pnl"),
+ notes:$("notes").value.trim()
+ };
+ if(!t.symbol||!t.strategy||!t.date||
+ !Number.isFinite(t.entry)||!Number.isFinite(t.exit)||
+ !Number.isFinite(t.risk)||t.risk<=0||
+ !Number.isFinite(t.pnl)||
+ (t.sl!==null&&!Number.isFinite(t.sl))||
+ (t.tp!==null&&!Number.isFinite(t.tp))){
+ alert("Bitte alle Pflichtfelder korrekt ausfüllen. Risiko muss größer als 0 sein.");
+ return;
+ }
+ const old=trades;
+ trades=id?trades.map(x=>x.id===id?t:x):[...trades,t];
+ if(!save()){trades=old;return}
+ resetForm();refresh();show("trades");
+};
+let month=new Date();
+month.setDate(1);
+function renderCalendar(){
+ const y=month.getFullYear(),m=month.getMonth();
+ $("monthTitle").textContent=month.toLocaleDateString("de-DE",
+ {month:"long",year:"numeric"});
+ clear("calendarGrid");
+ ["Mo","Di","Mi","Do","Fr","Sa","So"].forEach(d=>
+ el("div",d,$("calendarGrid"),"weekday"));
+ const first=(new Date(y,m,1).getDay()+6)%7;
+ for(let i=0;i<first;i++)el("div","",$("calendarGrid"),"day empty");
+ const days=new Date(y,m+1,0).getDate();
+ for(let d=1;d<=days;d++){
+ const key=y+"-"+String(m+1).padStart(2,"0")+"-"+
+ String(d).padStart(2,"0");
+ const daily=trades.filter(t=>t.date.slice(0,10)===key);
+ const total=daily.reduce((a,t)=>a+t.pnl,0);
+ const cls=daily.length?(total>0?"positive":total<0?"negative":""):"";
+ const cell=el("div",d,$("calendarGrid"),"day "+cls);
+ if(daily.length)el("strong",money(total),cell);
+ }
+}
+$("prevMonth").onclick=()=>{month.setMonth(month.getMonth()-1);renderCalendar()};
+$("nextMonth").onclick=()=>{month.setMonth(month.getMonth()+1);renderCalendar()};
+function renderStrategies(){
+ clear("strategyStats");
+ const names=[...new Set(trades.map(t=>t.strategy))].sort();
+ names.forEach(name=>{
+ const items=trades.filter(t=>t.strategy===name);
+ const s=summary(items);
+ const div=el("div",undefined,$("strategyStats"),"trade");
+ el("strong",name,div);
+ el("div",items.length+" Trades · "+pct(s.rate)+" Trefferquote",div);
+ el("div","Netto: "+money(s.sum)+" · PF: "+
+ (typeof s.pf==="number"?s.pf.toFixed(2):s.pf),div);
+ });
+ if(!names.length)el("p","Noch keine Strategiedaten.",$("strategyStats"));
+}
+function drawEquity(){
+ const canvas=$("equity");
+ const ctx=canvas.getContext("2d");
+ const w=canvas.clientWidth,h=220;
+ const ratio=window.devicePixelRatio||1;
+ canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);
+ ctx.setTransform(ratio,0,0,ratio,0,0);
+ ctx.clearRect(0,0,w,h);
+ const values=[0];let total=0;
+ sorted().forEach(t=>{total+=t.pnl;values.push(total)});
+ const min=Math.min(...values),max=Math.max(...values);
+ const range=max-min||1,pad=18;
+ const x=i=>pad+(w-2*pad)*i/Math.max(values.length-1,1);
+ const y=v=>h-pad-(v-min)/range*(h-2*pad);
+ ctx.strokeStyle="#475569";ctx.lineWidth=1;
+ ctx.beginPath();ctx.moveTo(pad,y(0));ctx.lineTo(w-pad,y(0));ctx.stroke();
+ ctx.strokeStyle=total>=0?"#22c55e":"#ef4444";
+ ctx.lineWidth=2.5;ctx.beginPath();
+ values.forEach((v,i)=>i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)));
+ ctx.stroke();
+}
+window.addEventListener("resize",drawEquity);
+refresh();
+</script>
 </body>
 </html>
+
